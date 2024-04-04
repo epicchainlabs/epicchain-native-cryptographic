@@ -1,0 +1,39 @@
+# Builds Python wheels and create a draft release
+name: Build Python release
+
+on: [workflow_dispatch]
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-11, windows-2019]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.16.2
+        env:
+            CIBW_BEFORE_BUILD_LINUX: "python3 -m pip install cmake"
+            CIBW_ARCHS_MACOS: "x86_64 arm64"
+            CIBW_ARCHS_LINUX: "auto aarch64"
+            CIBW_BUILD: "cp311-macosx_x86_64 cp311-macosx_arm64 cp311-win_amd64 cp311-manylinux_x86_64 cp311-musllinux_x86_64 cp311-manylinux_aarch64 cp311-musllinux_aarch64 cp312-macosx_x86_64 cp312-macosx_arm64 cp312-win_amd64 cp312-manylinux_x86_64 cp312-musllinux_x86_64 cp312-manylinux_aarch64 cp312-musllinux_aarch64"
+      - name: Deploy
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: Draft
+          name: Draft
+          draft: true
+          files: |
+            ./wheelhouse/*.whl
+        env:
+          GITHUB_TOKEN: ${{ secrets.deploy }}
